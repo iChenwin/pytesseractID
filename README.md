@@ -9,7 +9,8 @@
 ```
 PIL
 pytesseract
-numpy 1.13.1
+tesseract    3.05.01
+numpy        1.13.1
 ```
 
 ### 运行
