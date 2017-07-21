@@ -15,16 +15,16 @@ import numpy as np
 import heapq
 
 def main():
-    for i in range(6, 7):
-        tesseractID("./" + str(i) + ".jpg")
+    # for i in range(1, 16):
+    #     tesseractID("./" + str(i) + ".jpg")
 
-    #识别当前目录下所有.jpg图片中的身份证号
-    # imgFiles = []
-    # for idx, filename in enumerate(os.listdir(".")):
-    #     if filename.endswith(".jpg"):
-    #         imgFiles.insert(idx, filename)
-    # for img in imgFiles:
-    #     tesseractID("./" + img)
+    # 识别当前目录下所有.jpg图片中的身份证号
+    imgFiles = []
+    for idx, filename in enumerate(os.listdir(".")):
+        if filename.endswith(".jpg"):
+            imgFiles.insert(idx, filename)
+    for img in imgFiles:
+        tesseractID("./" + img)
 
 #身份证号码识别，先对图片进行黑白处理，裁剪出身份证号，然后识别
 def tesseractID(path):
@@ -86,8 +86,8 @@ def tesseractID(path):
         IDimg = img[y: y + h, x: x + w]
         IDimgs.insert(idx, IDimg)
 
-        cv2.imshow("IDimg", IDimg)
-        k = cv2.waitKey(0)
+        # cv2.imshow("IDimg", IDimg)
+        # k = cv2.waitKey(0)
 
     #将三张可能的框出的图片丢给tesseract识别，得到身份证
     IDstring = tesseractImg(IDimgs)
