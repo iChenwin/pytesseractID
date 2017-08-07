@@ -148,7 +148,7 @@ if __name__ == "__main__":
     # t1.start()
     # t1.join()
 
-    for i in range(1, 16):
+    for i in range(1, 3):
         tesseractID("./" + str(i) + ".jpg")
 
     # 识别当前目录下所有.jpg图片中的身份证号

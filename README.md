@@ -16,4 +16,4 @@ numpy        1.13.1
 ### 运行
 
 将身份证照片拷贝至项目文件夹下，执行：
-`python cvtesserID.py`
+`python IDtesseract.py 1.jpg`

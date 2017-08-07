@@ -19,6 +19,7 @@ import Queue
 import psutil
 import multiprocessing
 import time
+import sys
 
 # 单个图片识别item
 class ImageRecognizerItem(object):
@@ -83,7 +84,7 @@ def findIDcnt(countours):
     return IDcnts
 
 # 图片路径
-filePath = '16.jpg'
+filePath = '2.jpg'
 MEMORY_WARNING = 400*1024*1024  # 200M
 CPU_COUNT = multiprocessing.cpu_count() # 线程数
 ENABLE_THREAD = True   # 是否开启多线程模式
@@ -178,115 +179,127 @@ def handlePersonalInfo():
             elif item.recognizedText.startswith(u"住址"):
                 handledTexts["address"] = item.recognizedText[2:]
 
-start = time.time()
+def main():
+    # parse command line options
+    if len(sys.argv) != 2:
+        print 'Usage: python input_name output_name'
+        exit(1)
+    filePath = sys.argv[1]
 
-#身份证号码识别，先对图片进行黑白处理，裁剪出身份证号，然后识别
-img = cv2.imread(filePath, 0)
-img = cv2.resize(img, (1200, 900)) 
+    start = time.time()
 
-# 图片亮度调节
-# imgArr = np.array(img)
-# imgMean = np.mean(img)
-# imgcopy = imgArr - imgMean
-# imgcopy = imgcopy * 2 + imgMean * 3
-# imgcopy = imgcopy / 255
+    print "<----- processing %s ----->" % filePath
 
-#二值
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-retval, binaryed = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY);  
+    #身份证号码识别，先对图片进行黑白处理，裁剪出身份证号，然后识别
+    img = cv2.imread(filePath, 0)
+    img = cv2.resize(img, (1200, 900)) 
 
-#显示处理后图片，调试用
-# cv2.imshow("Binary", binaryed)
-# k = cv2.waitKey(0)
+    # 图片亮度调节
+    # imgArr = np.array(img)
+    # imgMean = np.mean(img)
+    # imgcopy = imgArr - imgMean
+    # imgcopy = imgcopy * 2 + imgMean * 3
+    # imgcopy = imgcopy / 255
 
-#闭运算  
-# closed = cv2.morphologyEx(binaryed, cv2.MORPH_CLOSE, kernel)  
-# cv2.imshow("Close",closed)
-# k = cv2.waitKey(0)
+    #二值
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    retval, binaryed = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY);  
 
-
-#开运算  
-# opened = cv2.morphologyEx(binaryed, cv2.MORPH_OPEN, kernel)  
-# cv2.imshow("Open", opened)
-# k = cv2.waitKey(0)
-
-#腐蚀图像
-# dilated = cv2.dilate(binaryed, kernel) 
-# cv2.imshow("dilate", dilated)
-# k = cv2.waitKey(0)
-
-#膨胀图像，使身份证号连成一整块，方便裁剪
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (65, 20)) 
-eroded = cv2.erode(binaryed, kernel) 
-
-# cv2.imshow("cannyed", eroded)
-# k = cv2.waitKey(0)
-
-#黑白反色，将字转为白色，为下一步框选做准备
-inverted = cv2.bitwise_not(eroded)
-
-# cv2.imshow("inverted", inverted)
-# k = cv2.waitKey(0)
-
-#框选出前景中，识别出的文本块
-contours, hierarchy = cv2.findContours(inverted, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)  
-
-#在所有文本框中挑出最长的三个框，身份证号应该在其中
-IDcnts = findIDcnt(contours)
-
-#画框
-# cv2.drawContours(img, IDcnts, -1, (255,0,0), 3)
-# cv2.imshow("img", img)
-# k = cv2.waitKey(0)
-
-queue = Queue.Queue()
-if ENABLE_THREAD:
-    for i in range(CPU_COUNT):
-        t = ThreadRecognize(queue)
-        t.setDaemon(True)
-        t.start()
-
-IDimgs = []
-for idx, IDcnt in enumerate(IDcnts):
-    x, y, w, h = cv2.boundingRect(IDcnt)
-    rect = (x, y, w, h)
-    #裁剪图片，并储存在IDimgs中
-    IDimg = img[y: y + h, x: x + w]
-    IDimgs.insert(idx, IDimg)
-
-    if ENABLE_THREAD:
-        args = (recognizedItems, IDimg, rect, "eng", "0123456789X",)
-        queue.put(args)
-    else:
-        recognizeImage(recognizedItems, IDimg, rect, "eng", "0123456789X")
-    # cv2.imshow("IDimg", IDimg)
+    #显示处理后图片，调试用
+    # cv2.imshow("Binary", binaryed)
     # k = cv2.waitKey(0)
 
-textImgs = []
-for idx, IDcnt in enumerate(contours):
-    x, y, w, h = cv2.boundingRect(IDcnt)
-    rect = (x, y, w, h)
-    if IDrect == rect:
-        break
-
-    #裁剪图片，并储存在textImg中
-    textImg = binaryed[y: y + h, x: x + w]
-    # textImgs.insert(idx, textImg)
-
-    if ENABLE_THREAD:
-        args = (recognizedItems, textImg, rect, "chi_sim",)
-        queue.put(args)
-    else:
-        recognizeImage(recognizedItems, textImg, rect, "chi_sim")
-
-    # cv2.imshow("textImg", textImg)
+    #闭运算  
+    # closed = cv2.morphologyEx(binaryed, cv2.MORPH_CLOSE, kernel)  
+    # cv2.imshow("Close",closed)
     # k = cv2.waitKey(0)
 
-queue.join()
 
-handlePersonalInfo()
-result = json.dumps(handledTexts, default=lambda o: o.__dict__, sort_keys=False, indent=4)
-print result
-print "<----- %.1f seconds used ----->" % (time.time() - start)
+    #开运算  
+    # opened = cv2.morphologyEx(binaryed, cv2.MORPH_OPEN, kernel)  
+    # cv2.imshow("Open", opened)
+    # k = cv2.waitKey(0)
 
-cv2.destroyAllWindows()
+    #腐蚀图像
+    # dilated = cv2.dilate(binaryed, kernel) 
+    # cv2.imshow("dilate", dilated)
+    # k = cv2.waitKey(0)
+
+    #膨胀图像，使身份证号连成一整块，方便裁剪
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (65, 20)) 
+    eroded = cv2.erode(binaryed, kernel) 
+
+    # cv2.imshow("cannyed", eroded)
+    # k = cv2.waitKey(0)
+
+    #黑白反色，将字转为白色，为下一步框选做准备
+    inverted = cv2.bitwise_not(eroded)
+
+    # cv2.imshow("inverted", inverted)
+    # k = cv2.waitKey(0)
+
+    #框选出前景中，识别出的文本块
+    contours, hierarchy = cv2.findContours(inverted, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)  
+
+    #在所有文本框中挑出最长的三个框，身份证号应该在其中
+    IDcnts = findIDcnt(contours)
+
+    #画框
+    # cv2.drawContours(img, IDcnts, -1, (255,0,0), 3)
+    # cv2.imshow("img", img)
+    # k = cv2.waitKey(0)
+
+    queue = Queue.Queue()
+    if ENABLE_THREAD:
+        for i in range(CPU_COUNT):
+            t = ThreadRecognize(queue)
+            t.setDaemon(True)
+            t.start()
+
+    IDimgs = []
+    for idx, IDcnt in enumerate(IDcnts):
+        x, y, w, h = cv2.boundingRect(IDcnt)
+        rect = (x, y, w, h)
+        #裁剪图片，并储存在IDimgs中
+        IDimg = img[y: y + h, x: x + w]
+        IDimgs.insert(idx, IDimg)
+
+        if ENABLE_THREAD:
+            args = (recognizedItems, IDimg, rect, "eng", "0123456789X",)
+            queue.put(args)
+        else:
+            recognizeImage(recognizedItems, IDimg, rect, "eng", "0123456789X")
+        # cv2.imshow("IDimg", IDimg)
+        # k = cv2.waitKey(0)
+
+    textImgs = []
+    for idx, IDcnt in enumerate(contours):
+        x, y, w, h = cv2.boundingRect(IDcnt)
+        rect = (x, y, w, h)
+        if IDrect == rect:
+            break
+
+        #裁剪图片，并储存在textImg中
+        textImg = binaryed[y: y + h, x: x + w]
+        # textImgs.insert(idx, textImg)
+
+        if ENABLE_THREAD:
+            args = (recognizedItems, textImg, rect, "chi_sim",)
+            queue.put(args)
+        else:
+            recognizeImage(recognizedItems, textImg, rect, "chi_sim")
+
+        # cv2.imshow("textImg", textImg)
+        # k = cv2.waitKey(0)
+
+    queue.join()
+
+    handlePersonalInfo()
+    result = json.dumps(handledTexts, default=lambda o: o.__dict__, sort_keys=False, indent=4)
+    print result
+    cv2.destroyAllWindows()
+    print "<----- %.1f seconds used ----->" % (time.time() - start)
+
+if __name__ == "__main__":
+    main()
+    
