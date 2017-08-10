@@ -157,6 +157,7 @@ provinces = [
 
 def handlePersonalInfo():
     for idx, item in enumerate(reversed(recognizedItems)):
+
         if item.recognizedText.startswith(u"姓名"):
             handledTexts["name"] = item.recognizedText[2:]
         elif item.recognizedText.isdigit() and int(item.recognizedText) > 10000000:
@@ -174,21 +175,32 @@ def handlePersonalInfo():
                 if not handledTexts.has_key("IDnumber"):
                     handledTexts["IDnumber"] = item.recognizedText[6:]
                 continue
-            if handledTexts.has_key("address"):
-                handledTexts["address"] += item.recognizedText[2:]
-            elif item.recognizedText.startswith(u"住址"):
+                
+            if item.recognizedText.startswith(u"住址"):
                 handledTexts["address"] = item.recognizedText[2:]
+            else:
+                handledTexts["address"] += item.recognizedText[2:]
 
 def main():
+
+    handledTexts["name"] = ""
+    handledTexts["birthDate"] = ""
+    handledTexts["gender"] = ""
+    handledTexts["ethnic"] = ""
+    handledTexts["IDnumber"] = ""
+    handledTexts["address"] = ""
+
     # parse command line options
     if len(sys.argv) != 2:
-        print 'Usage: python input_name output_name'
+        #print 'Usage: python input_name output_name'
+        returnData = {'code':1001, 'data':'无效参数'}
+        print json.dumps(returnData)
         exit(1)
     filePath = sys.argv[1]
 
     start = time.time()
 
-    print "<----- processing %s ----->" % filePath
+    #print "<----- processing %s ----->" % filePath
 
     #身份证号码识别，先对图片进行黑白处理，裁剪出身份证号，然后识别
     img = cv2.imread(filePath, 0)
@@ -296,9 +308,10 @@ def main():
 
     handlePersonalInfo()
     result = json.dumps(handledTexts, default=lambda o: o.__dict__, sort_keys=False, indent=4)
-    print result
+    print json.dumps({'code':1000, 'data':json.loads(result)})
+    #print result
     cv2.destroyAllWindows()
-    print "<----- %.1f seconds used ----->" % (time.time() - start)
+    #print "<----- %.1f seconds used ----->" % (time.time() - start)
 
 if __name__ == "__main__":
     main()
